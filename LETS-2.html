@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Love Scale Feedback</title>
+  <script src="jspsych/dist/jspsych.js"></script>
+  <script src="jspsych/dist/plugin-survey-likert.js"></script>
+  <link href="jspsych/dist/jspsych.css" rel="stylesheet" type="text/css" />
+  <script src="chart_js/dist/chart.umd.min.js"></script>
+  <style>
+    #feedback-container {
+      width: 70%;
+      margin: 40px auto;
+      display: none;
+    }
+    /* ラジオボタンの大きさを変更 */
+    .jspsych-survey-likert-opt label input[type="radio"] {
+      transform: scale(3); /* 1.5倍に*/
+      margin: 6px;
+    }
+    /* ラベルの文字サイズも調整（任意） */
+    .jspsych-survey-likert-opt label {
+      font-size: 1.15em;
+    }
+  </style>
+</head>
+<body>
+  <div id="feedback-container">
+    <canvas id="feedbackChart" width="1200" height="1200"></canvas>
+    <div id="score-comment" style="margin-top:-90px; font-size:0.9em; color:#222;"></div>
+  </div>
+  <script>
+    // --- 質問リスト ---
+    const questions_part1 = [
+      ["E", "彼（彼女）と私は会うとすぐにお互いひかれあった。"],
+      ["S", "私たちの友情がいつ愛に変わったのか，はっきりとは言えない。"],
+      ["L", "彼(彼女)に対してどう関わっているかについて，少し曖昧にしておこうと気をつけている。"],
+      ["A", "彼(彼女)が苦しむくらいなら私自身が苦しんだほうがましだ。"],
+      ["E", "彼（彼女）と私は外見的にうまく釣り合っている。"],
+      ["A", "私自身の幸福よりも，彼(彼女)の幸福が優先しないと，私は幸福にはなれない。"],
+      ["M", "彼(彼女)が気にかけてくれないときは，すっかり気がめいってしまう。"],
+      ["S", "私たちの友情は，時間をかけて次第に愛へと変わった。"],
+      ["A", "彼(彼女)の望みをかなえるためなら，私自身の望みはいつでも喜んで犠牲にできる。"],
+      ["M", "彼(彼女)が誰か他の人と付き合っているのではないかと疑うと，落ち着いてられない。"],
+      ["E", "彼（彼女）と私は，お互いが結びついていると感じる。"],
+      ["E", "彼（彼女）と私はかなり早く，感情的にのめり込んでしまった。"],
+      ["S", "彼(彼女)との友情を大切にしたい。"],
+      ["L", "彼(彼女)が私に頼りすぎるときは，私は少し身を引きたくなる。"],
+      ["M", "私は気がつくと，いつも彼(彼女)のことを考えている。"],
+      ["E", "彼（彼女）と私はお互いに，本当に理解しあっている。"],
+      ["L", "彼(彼女)に期待を持たせたり，彼（彼女）が私との恋に夢中になり過ぎないように気をつけている。"],
+      ["M", "彼(彼女)が私以外の異性と楽しそうにしていると，気になって仕方がない。"],
+      ["L", "私が必要だと感じたときだけ彼(彼女)にそばにいてほしいと思う。"],
+      ["A", "私は彼(彼女)と一緒なら，どんな貧乏な暮らしでも平気である。"],
+      ["M", "彼(彼女)は私だけのものであって欲しい。"],
+      ["L", "彼(彼女)とはあまり深入りせず，すっきりした関係でありたい。"],
+      ["A", "彼(彼女)のためなら，死ぬ事さえもおそれない。"],
+      ["M", "彼(彼女)には，いつも私のことだけを考えていてほしい。"],
+      ["E", "彼(彼女)と一緒にいると，私たちが本当に愛し合っている事を実感する。"],
+      ["L", "彼(彼女)とは定期的に会うよりも，気が向いたときにだけ会っている。"],
+      ["A", "彼(彼女)のためなら，できないこともできるようにしてみせる。"],
+      ["M", "彼(彼女)とケンカをすると，不安や心配でやつれてしまう。"],
+      ["M", "彼(彼女)からの愛情が，ほんのわずかでも欠けていると感じたときには，悩み苦しむ。"],
+      ["S", "彼(彼女)との交際が終わっても，友人でいたいと思う。"],
+      ["S", "彼(彼女)とは，友人関係から自然に恋人関係へと発展した(させたい)。"],
+      ["M", "彼(彼女)のことを思うと，強い感情が突き上げてどうしようもなくなる。"],
+      ["A", "どんなにつらくても私は彼(彼女)に対して，いつもやさしくしてあげたい。"],
+      ["A", "たとえ彼(彼女)からまったく愛されなくても，私は彼(彼女)を愛していたい。"],
+      ["E", "彼(彼女)と私は，お互いに出会うために，この世に生まれてきたような気がする。"],
+      ["E", "彼(彼女)との愛を大切にしたいと，気を使っている。"],
+      ["S", "長い友人付き合いを経て，恋人同士になった。"],
+      ["E", "彼(彼女)といると甘く優しい雰囲気になる。"],
+      ["L", "私は彼(彼女)にあれこれ干渉されると，その人と別れたくなる。"],
+      ["A", "彼(彼女)のためなら，どんなことでも我慢できる。"]
+    ];
+    const questions_part2 = [
+      ["P", "私は，交際相手と深く関わる前に，深く関わったあと相手がどんな変化を見せるだろうかとよく考える。"],
+      ["P", "私は恋人を選ぶ前に，自分の人生を慎重に計画しようとする。"],
+      ["P", "恋人を選ぶときには，その人が私の家族にどう受け入れられるかを一番に考える。"],
+      ["L", "特定の交際相手を決めたくないと思う。"],
+      ["P", "恋人を選ぶのに重要な要素は，その人がよい親になるかどうかだ。"],
+      ["P", "恋人を選ぶときには，その人が私の経歴にどう影響するかも考える。"],
+      ["P", "恋人を選ぶときには，その人は将来性があるだろうかと考えてみる。"],
+      ["S", "最良の愛は，良い友情の中から育つ。"],
+      ["P", "恋人を選ぶときには，その人の学歴や育ち(家柄)が私と釣り合ってるかどうかを考える。"],
+      ["P", "恋人を選ぶときには，その人に経済力があるかどうかを考える。"],
+      ["P", "恋人を選ぶときには，その人との付き合いは，私の格(レベル)を下げないかと考える。"],
+      ["L", "交際相手から頼られすぎたりベタベタされるのが嫌である。"],
+      ["S", "これまでもっとも満足した恋愛関係は，よい友情から発展してきた。"]
+    ];
+
+    const likert_labels = [
+      "よく当てはまる",
+      "少し当てはまる",
+      "どちらともいえない",
+      "あまり当てはまらない",
+      "まったく当てはまらない"
+    ];
+
+    function buildLikertQuestions(qList) {
+      return qList.map(q => ({
+        prompt: q[1],
+        labels: likert_labels,
+        required: true
+      }));
+    }
+
+    const survey1 = {
+      type: jsPsychSurveyLikert,
+      preamble: "<b>【第1部】<br>恋人や好きな人もしくは，家族以外であなたにとってもっとも親しい異性について答えてください。</b>",
+      questions: buildLikertQuestions(questions_part1)
+    };
+
+    const survey2 = {
+      type: jsPsychSurveyLikert,
+      preamble: "<b>【第2部】<br>あなたの異性観や恋愛に関する意見や経験について答えてください。</b>",
+      questions: buildLikertQuestions(questions_part2)
+    };
+
+    // ★ 集計用 領域リスト
+    const domains = questions_part1.map(q=>q[0]).concat(questions_part2.map(q=>q[0]));
+
+    // ★ jsPsych初期化
+    const jsPsych = initJsPsych({
+      on_finish: function() {
+        // 全部の回答データを取得
+        const responses = [];
+        jsPsych.data.get().values().forEach(d => {
+          Object.values(d.response).forEach(v => responses.push(v + 1)); // 0-index → 1-index
+        });
+
+        // ドメイン名ごとに点数合計
+        const domainTypes = [...new Set(domains)]; // ["E","S","L","A","M","P"]
+        const domainSum = {};
+        domainTypes.forEach(dom => { domainSum[dom] = 0; });
+
+        responses.forEach((v, i) => {
+          domainSum[domains[i]] += v;
+        });
+
+        // 得点変換（S: 41-合計、他: 46-合計）
+        const domainScore = domainTypes.map(dom => {
+          const max = (dom === "S") ? 41 : 46;
+          return max - domainSum[dom];
+        });
+
+        // 表示用ラベル
+        const domainLabels = domainTypes.map(dom => ({
+          "E":"耽美的愛（エロス）",
+          "S":"友情的愛（ストルゲ）",
+          "L":"遊びの愛（ルダス）",
+          "A":"献身的愛（アガペ）",
+          "M":"狂気的愛（マニア）",
+          "P":"実利的愛（プラグマ）"
+        }[dom] || dom));
+
+        // グラフ描画領域を表示
+        document.getElementById("feedback-container").style.display = "block";
+        const ctx = document.getElementById("feedbackChart").getContext("2d");
+
+        // カスタムプラグイン：ラベル色分け
+        const myColoredLabels = {
+          id: 'myColoredLabels',
+          afterDraw: function(chart) {
+            if (chart.config.type !== 'radar') return;
+            const ctx = chart.ctx;
+            const scale = chart.scales.r;
+            const labels = chart.data.labels;
+            const labelColors = [
+              '#e74c3c', // E
+              '#3498db', // S
+              '#2ecc71', // L
+              '#f1c40f', // A
+              '#9b59b6', // M
+              '#e67e22'  // P
+            ];
+            ctx.save();
+            labels.forEach((label, i) => {
+              const opts = scale.options.pointLabels;
+              const { x, y } = scale.getPointPositionForValue(i, scale.max + 4); //+の数字が大きいほどラベルが外側に
+              ctx.font = "16px " + (opts.font.family || "sans-serif");
+              ctx.fillStyle = labelColors[i % labelColors.length];
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(label, x, y);
+            });
+            ctx.restore();
+          }
+        };
+
+        // レーダーチャート描画
+        new Chart(ctx, {
+          type: 'radar',
+          data: {
+            labels: domainLabels,
+            datasets: [{
+              label: "",
+              data: domainScore,
+              fill: true
+            }]
+          },
+          options: {
+            plugins: {
+              legend: { display: false}
+            },
+            scales: {
+              r: {
+                min: 0,
+                max: 40,
+                ticks: { stepSize: 5 },
+                pointLabels: { display: true, font: { size: 14 }, color: "#fff", padding: 60 }
+              }
+            }
+          },
+          plugins: [myColoredLabels]
+        });
+        // 5. 得点解説
+       const domainDescriptions = {
+          "E": "耽美的愛（エロス）：ロマンティックな愛。恋人の外見を重視する。",
+          "S": "友情的愛（ストルゲ）：穏やかな友情的な愛。長い時間をかけて愛が育まれる。",
+          "L": "遊びの愛（ルダス）：恋愛をゲームと考えて楽しむことを大切にする。",
+          "A": "献身的愛（アガペ）：相手の利益だけを考えて自分を犠牲にすることをいとわない。",
+          "M": "狂気的愛（マニア）：激しい感情をもち，独占欲が強く，嫉妬深い。",
+          "P": "実利的愛（プラグマ）：恋愛を地位の上昇などの目的を達成するための手段と考える。"
+        };
+       let commentHTML = "<b>各タイプの解説</b><br>";
+       domainTypes.forEach((dom, i) => {
+         commentHTML += "<span style='margin-left:1em; color:#555;'>" + domainDescriptions[dom] + "</span><br>";
+       });
+       document.getElementById("score-comment").innerHTML = commentHTML;
+       }
+    });
+
+    // jsPsych実行
+    jsPsych.run([survey1, survey2]);
+  </script>
+</body>
+</html>
